@@ -1,0 +1,31 @@
+services:
+  server:
+    build: 
+      context: "."
+      dockerfile: "./docker/server/Dockerfile"
+      args:
+        DEVELOPMENT: ${DEVELOPMENT}
+    volumes:
+      - type: bind
+        source: ./server
+        target: /usr/src/app/server
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgres://postgres:password@db/cryptochest
+  db:
+    build: 
+      context: "."
+      dockerfile: "./docker/db/Dockerfile"
+    restart: always
+    volumes:
+      - type: bind
+        source: ./database
+        target: /var/lib/postgresql/data
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080

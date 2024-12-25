@@ -1,0 +1,15 @@
+{
+  "name": "crypto-chest",
+  "version": "1.0.0",
+  "description": "Encrypted and secure personal cloud drive",
+  "main": "index.js",
+  "scripts": {
+    "start": "cd server && node index.js",
+    "dev": "cd server && nodemon index.js"
+  },
+  "author": "Enrico",
+  "license": "MIT",
+  "workspaces": [
+    "server"
+  ]
+}

@@ -9,16 +9,22 @@ services:
       - type: bind
         source: ./server
         target: /usr/src/app/server
+      - type: bind
+        source: ./client
+        target: /usr/src/app/client
     ports:
       - "3000:3000"
+      - "5173:5173"
     depends_on:
-      - db
+      - database
     environment:
-      - DATABASE_URL=postgres://postgres:password@db/cryptochest
-  db:
+      - DATABASE_URL=postgres://postgres:password@database/cryptochest
+    env_file:
+      - .env
+  database:
     build: 
       context: "."
-      dockerfile: "./docker/db/Dockerfile"
+      dockerfile: "./docker/database/Dockerfile"
     restart: always
     volumes:
       - type: bind

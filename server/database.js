@@ -23,11 +23,11 @@ export default class Database {
     }
     
     async createLoginAttempt(username) {
-        const userInfo = await this.db`SELECT * FROM users WHERE username = ${username}`;
+        const userInfo = await this.getUser(username);
 
-        if (userInfo.length === 0) {
-            return null;
-        }
+		if (!userInfo) {
+			return null;
+		}
 
         const {id, salt, verifier} = userInfo[0];
 
@@ -38,7 +38,7 @@ export default class Database {
         for (let i = 0; i < 10; i++) { // let's limit the number of attempts to generate a unique id to avoid infinite loops
             loginAttemptId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
-            await this.db`INSERT INTO loginAttempts (id, user_id, server_secret, expires) VALUES (${loginAttemptId}, ${id}, ${serverEphemeral.public}, ${Date.now() + 1000 * 60 * 15})`.catch(() => {
+            await this.db`INSERT INTO loginAttempts (id, user_id, server_secret, expires) VALUES (${loginAttemptId}, ${id}, ${serverEphemeral.secret}, ${Date.now() + 1000 * 60 * 15})`.catch(() => {
                 loginAttemptId = null
             });
 
@@ -98,4 +98,18 @@ export default class Database {
 
         return query[0].username;
     }
+
+	async getUser(username) {
+		const query = await this.db`SELECT * FROM users WHERE username = ${username}`;
+
+		if (query.length === 0) {
+			return null;
+		}
+
+		return query[0];
+	}
+
+	async registerUser(username, email, salt, verifier) {
+        await this.db`INSERT INTO users (id, email, salt, verifier) VALUES (${username}, ${email}, ${salt}, ${verifier})`;
+	}
 }

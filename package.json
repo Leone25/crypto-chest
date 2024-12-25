@@ -1,15 +1,26 @@
 {
-  "name": "crypto-chest",
-  "version": "1.0.0",
-  "description": "Encrypted and secure personal cloud drive",
-  "main": "index.js",
-  "scripts": {
-    "start": "cd server && node index.js",
-    "dev": "cd server && nodemon index.js"
-  },
-  "author": "Enrico",
-  "license": "MIT",
-  "workspaces": [
-    "server"
-  ]
+	"name": "crypto-chest",
+	"version": "1.0.0",
+	"description": "Encrypted and secure personal cloud drive",
+	"main": "index.js",
+	"scripts": {
+		"client:dev": "cd client && npm run dev",
+		"client:prod": "cd client && npm run build",
+		"server:dev": "cd server && npm run dev",
+		"server:prod": "cd server && npm run prod",
+		"dev": "concurrently --names \"SERVER,CLIENT\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run server:dev\" \"npm run client:dev\"",
+		"prod": "npm run client:prod && npm run server:prod",
+		"docker:up": "docker compose up -d",
+		"docker:down": "docker compose down",
+		"docker:rebuild": "docker compose down && docker compose build --no-cache && docker compose up -d"
+	},
+	"author": "Enrico",
+	"license": "MIT",
+	"workspaces": [
+		"server",
+		"client"
+	],
+	"devDependencies": {
+		"concurrently": "^8.0.1"
+	}
 }

@@ -34,7 +34,6 @@ router.use(async (req, res, next) => {
 		}
 		const originalSend = res.send; // replace res.send to encrypt response
 		res.send = function (body) {
-			console.log(body);
 			if (typeof body === 'object') {
 				body = JSON.stringify(body);
 			}

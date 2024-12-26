@@ -1,15 +1,51 @@
-import { Router } from "express";
+import { Router, raw, json } from "express";
+import crypto from "crypto";
 import { db } from "./index.js";
 
 const router = Router();
 
 router.use(async (req, res, next) => {
     req.session = await db.findSession(req.headers.authorization);
-	//console.log(req.session);
     next();
 });
 
-router.get("/ping", (req, res) => {
+router.use(raw({ type: '*/*'}));
+router.use(async (req, res, next) => {
+	if (req.headers.encrypted === 'true') {
+		if (!req.session || !req.session.loggedIn || !req.session.encryption_key) {
+			return res.status(401).json({ error: 'Unauthorized' });
+		}
+		if (req.method != 'GET' && req.body) { // decrypt body
+			try {
+				const iv = req.body.slice(0, 32);
+				const encrypted = req.body.slice(32);
+				const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(req.session.encryption_key, 'hex'), iv);
+				const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+				req.body = decrypted;
+			} catch (err) {
+				return res.status(400).json({ error: 'Invalid encrypted body' });
+			}
+		}
+		const originalSend = res.send; // replace res.send to encrypt response
+		res.send = function (body) {
+			console.log(body);
+			if (typeof body === 'object') {
+				body = JSON.stringify(body);
+			}
+			const iv = crypto.randomBytes(16);
+			const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(req.session.encryption_key, 'hex'), iv);
+			let encrypted = cipher.update(body, 'utf8', 'hex');
+			encrypted += cipher.final('hex');
+			res.setHeader('Encrypted', 'true');
+			originalSend.call(this, iv.toString('hex') + ':' + encrypted);
+		};
+	}
+	next();
+});
+
+router.use(json());
+
+router.all("/ping", (req, res) => {
     res.send("pong");
 });
 
@@ -25,7 +61,7 @@ router.post("/users", async (req, res) => { // register a new user
 
 router.get("/session", (req, res) => {
     if (req.session) {
-        return res.send(req.session);
+    	res.json(req.session);
     }
     res.status(404).json({error: "session not found"});
 });

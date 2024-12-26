@@ -11,7 +11,17 @@ export const useSession = defineStore('session', {
 		authorization: null,
 	}),
 	actions: {
-		makeRequest(method, path, body) {
+		hexToUint8Array(hex) {
+			const bytes = new Uint8Array(hex.length / 2);
+			for (let i = 0; i < bytes.length; i++) {
+				bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+			}
+			return bytes;
+		},
+		uint8ArrayToHex(uint8Array) {
+			return Array.from(uint8Array).map(b => b.toString(16).padStart(2, '0')).join('');
+		},
+		makeRequest(method, path, body = null) {
 			let abort = new AbortController();
 			let headers = {};
 			if (this.authorization) {
@@ -19,11 +29,22 @@ export const useSession = defineStore('session', {
 			}
 			if (body) {
 				headers['Content-Type'] = 'application/json';
+				body = JSON.stringify(body);
+			}
+			if (this.encryptionKey) {
+				headers['Encrypted'] = 'true';
+				if (body) {
+					const iv = crypto.getRandomValues(new Uint8Array(16));
+					const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(this.encryptionKey, 'hex'), iv);
+					let encrypted = cipher.update(body, 'utf8');
+					encrypted += cipher.final();
+					body = Buffer.concat([iv, Buffer.from(encrypted)]);
+				}
 			}
 			let response = fetch('/api/v1' + path, {
 				method,
 				headers,
-				body: body ? JSON.stringify(body) : undefined,
+				body,
 				signal: abort.signal
 			}).then(async res => {
 				if (!res.ok) {
@@ -33,6 +54,26 @@ export const useSession = defineStore('session', {
 						throw new Error(error.error);
 					}
 					throw new Error(`Could not ${method} ${path} (${res.status} - ${res.statusText})`);
+				}
+				if (res.headers.get('Encrypted') === 'true') {
+					const original = await res.arrayBuffer();
+					const iv = original.slice(0, 16);
+					const encrypted = original.slice(16);
+					const keyBytes = this.hexToUint8Array(this.encryptionKey);
+					const key = await crypto.subtle.importKey(
+						'raw',
+						keyBytes,
+						{ name: 'AES-CBC' },
+						false,
+						['decrypt']
+					);
+
+					const decryptedData = await crypto.subtle.decrypt(
+						{ name: 'AES-CBC', iv },
+						key,
+						encrypted
+					);
+					return new Response(decryptedData);
 				}
 				return res;
 			})
@@ -80,7 +121,7 @@ export const useSession = defineStore('session', {
 			});
 			let loginAttempt = await response;
 			loginAttempt = await loginAttempt.json();
-			const {serverEphemeral, salt} = loginAttempt;
+			const { serverEphemeral, salt } = loginAttempt;
 			username = loginAttempt.username; // converting email to username (could also be used for alt-names)
 			this.authorization = loginAttempt.sessionId;
 			const privateKey = srp.derivePrivateKey(salt, username, password);
@@ -91,11 +132,9 @@ export const useSession = defineStore('session', {
 			});
 			let session = await response;
 			session = await session.json();
-			console.log(session);
-			console.log(clientSession, serverEphemeral, session.proof);
 			srp.verifySession(clientEphemeral.public, clientSession, session.proof);
 			this.username = username;
-			this.key = session.key;
+			this.encryptionKey = clientSession.key;
 			this.valid = true;
 			this.loggedIn = true;
 			this.saveSession();

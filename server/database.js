@@ -40,10 +40,7 @@ export default class Database {
         for (let i = 0; i < 10; i++) { // let's limit the number of attempts to generate a unique id to avoid infinite loops
             loginAttemptId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
-		console.log(loginAttemptId);
-
             await this.db`INSERT INTO "loginAttempts" (id, user_id, server_secret, expires) VALUES (${loginAttemptId}, ${id}, ${serverEphemeral.secret}, ${Date.now() + 1000 * 60 * 15})`.catch((err) => {
-				console.log(err);
                 loginAttemptId = null;
             });
 
@@ -69,7 +66,6 @@ export default class Database {
         const {user_id: username, server_secret: serverEphemeral, expires} = query[0];
 
 		let userInfo = await this.getUser(username);
-		console.log(username, userInfo);
 
         if (expires < Date.now()) {
             await this.db`DELETE FROM "loginAttempts" WHERE id = ${id}`;
@@ -78,10 +74,8 @@ export default class Database {
 
         let serverSession = null;
         try {
-			console.log(serverEphemeral, clientEphemeral, userInfo.salt, username, clientProof);
             serverSession = srp.deriveSession(serverEphemeral, clientEphemeral, userInfo.salt, username, userInfo.verifier, clientProof);
         } catch(err) {
-			console.log(err);
             return null;
         }
 

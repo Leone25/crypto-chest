@@ -39,7 +39,7 @@ export const useSession = defineStore('session', {
 			return [response, abort];
 		},
 		async init() {
-			this.session = JSON.parse(localStorage.getItem('session') || 'null');
+			this.loadSession();
 			if (this.session) {
 				await this.verifySession();
 			}
@@ -80,24 +80,27 @@ export const useSession = defineStore('session', {
 			});
 			let loginAttempt = await response;
 			loginAttempt = await loginAttempt.json();
-			const serverPublicEphemeral = loginAttempt.serverEphemeral;
+			const {serverEphemeral, salt} = loginAttempt;
 			username = loginAttempt.username; // converting email to username (could also be used for alt-names)
 			this.authorization = loginAttempt.sessionId;
 			const privateKey = srp.derivePrivateKey(salt, username, password);
-			const clientSession = srp.deriveSession(clientEphemeral.secret, serverPublicEphemeral, salt, username, privateKey);
+			const clientSession = srp.deriveSession(clientEphemeral.secret, serverEphemeral, salt, username, privateKey);
 			[response, abort] = this.makeRequest('PATCH', '/session', {
 				clientEphemeral: clientEphemeral.public,
 				proof: clientSession.proof,
 			});
 			let session = await response;
 			session = await session.json();
-			srp.verifySession(clientSession, session.serverEphemeral, session.proof);
+			console.log(session);
+			console.log(clientSession, serverEphemeral, session.proof);
+			srp.verifySession(clientEphemeral.public, clientSession, session.proof);
 			this.username = username;
 			this.key = session.key;
 			this.valid = true;
 			this.loggedIn = true;
+			this.saveSession();
 		},
-		async register(email, username, password) { // TEMP method for testing
+		async register(username, email, password) { // TEMP method for testing
 			const salt = srp.generateSalt();
 			const privateKey = srp.derivePrivateKey(salt, username, password);
 			const verifier = srp.deriveVerifier(privateKey);

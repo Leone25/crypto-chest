@@ -5,8 +5,8 @@ import { mapState, mapActions } from 'pinia';
 export default {
 	data() {
 		return {
-			username: '',
-			password: '',
+			username: 'enrico',
+			password: 'password',
 			loading: false,
 			error: null,
 		}
@@ -21,6 +21,7 @@ export default {
 					this.$router.push('/');
 				})
 				.catch((error) => {
+					console.log(error);
 					this.error = error;
 					this.loading = false;
 				});
@@ -34,5 +35,6 @@ export default {
 		<input v-model="username" placeholder="Username"/>
 		<input v-model="password" placeholder="Password" type="password"/>
 		<button @click="submit" :disabled="loading">Login</button>
+		<div v-if="error">{{ error }}</div>
 	</div>
 </template>

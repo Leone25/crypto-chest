@@ -5,9 +5,9 @@ import { mapState, mapActions } from 'pinia';
 export default {
 	data() {
 		return {
-			email: '',
-			username: '',
-			password: '',
+			email: 'test@example.com',
+			username: 'enrico',
+			password: 'password',
 			loading: false,
 			error: null,
 		}
@@ -17,7 +17,7 @@ export default {
 		async submit() {
 			this.loading = true;
 			this.error = null;
-			this.register(this.username,this.password)
+			this.register(this.username, this.email, this.password)
 				.then(() => {
 					this.$router.push('/login');
 				})

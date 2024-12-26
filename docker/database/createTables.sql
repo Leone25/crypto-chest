@@ -12,24 +12,24 @@ CREATE TABLE IF NOT EXISTS "users" (
 CREATE TABLE IF NOT EXISTS "invites" (
     id VARCHAR(255) PRIMARY KEY NOT NULL,
     email TEXT,
-    expires INTEGER
+    expires BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS "loginAttempts" (
     id VARCHAR(255) PRIMARY KEY NOT NULL,
-    user_id TEXT NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
     server_secret TEXT NOT NULL,
-    expires INTEGER,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    expires BIGINT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS "sessions" (
     id VARCHAR(255) PRIMARY KEY NOT NULL,
-    user_id TEXT NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
     encryption_key TEXT NOT NULL,
     description TEXT,
-    expires INTEGER,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    expires BIGINT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE OR REPLACE FUNCTION check_session_id()

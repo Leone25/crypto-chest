@@ -3,8 +3,9 @@ import { db } from "./index.js";
 
 const router = Router();
 
-router.use((req, res, next) => {
-    req.session = db.findSession(req.headers.authorization);
+router.use(async (req, res, next) => {
+    req.session = await db.findSession(req.headers.authorization);
+	//console.log(req.session);
     next();
 });
 
@@ -29,32 +30,32 @@ router.get("/session", (req, res) => {
     res.status(404).json({error: "session not found"});
 });
 
-router.post("/session", (req, res) => { // generate a new login attempt
+router.post("/session", async (req, res) => { // generate a new login attempt
     if (req.session) {
         return res.status(400).json({error: "session already exists"});
     }
     if (!req.body) {
         return res.status(400).json({error: "username or email required"});
     }
-    if (!req.username) {
+    if (!req.body.username) {
         return res.status(400).json({error: "username or email required"});
     }
-    if (/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(req.username)) { // try to convert username to email
-        req.username = db.findUsernameByEmail(req.username);
-        if (!req.username) {
+    if (/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(req.body.username)) { // try to convert username to email
+        req.body.username = await db.findUsernameByEmail(req.body.username);
+        if (!req.body.username) {
             res.status(404).json({error: "username or email not found"});
         }
-    } else if (!db.findUser(req.username)) {
+    } else if (!await db.getUser(req.body.username)) {
 		return res.status(404).json({error: "username or email not found"});
 	}
-    const session = db.createLoginAttempt(req.username);
+    const session = await db.createLoginAttempt(req.body.username);
     if (!session) {
         return res.status(500).json({error: "failed to create login attempt"});
     }
     res.send(session);
 });
 
-router.patch("/session", (req, res) => { // verify login attempt
+router.patch("/session", async (req, res) => { // verify login attempt
     if (!req.session) {
         return res.status(400).json({error: "session not found"});
     }
@@ -64,11 +65,11 @@ router.patch("/session", (req, res) => { // verify login attempt
     if (!req.body || !req.body.clientEphemeral || !req.body.proof) {
         res.status(400).json({error: "client ephemeral and proof required"});
     }
-    const serverSession = db.verifyLoginAttempt(req.session.id, req.body.clientEphemeral, req.body.proof, req.body.description || req.headers["user-agent"] || "unknown");
+    const serverSession = await db.verifyLoginAttempt(req.session.id, req.body.clientEphemeral, req.body.proof, req.body.description || req.headers["user-agent"] || "unknown");
     if (!serverSession) {
         return res.status(401).json({error: "login attempt failed"});
     }
-    res.send(serverSession);
+    res.json(serverSession);
 });
 
 router.delete("/session", (req, res) => {

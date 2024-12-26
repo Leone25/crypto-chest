@@ -8,7 +8,7 @@ export default {
 	methods: {
 		...mapActions(useSession, ['makeRequest']),
 		test() {
-			let [request, abort] = this.makeRequest('GET', '/ping');
+			let [request, abort] = this.makeRequest('POST', '/echo', { body: "test" });
 			request.then(res => res.text()).then((response) => {
 				console.log(response);
 			}).catch((error) => {

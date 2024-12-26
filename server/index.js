@@ -25,7 +25,6 @@ let server = http.Server(app);
 export const io = new Server(server, {
 	serveClient: false,
 });
-app.use(express.json());
 
 app.use("/api/v1/", api);
 

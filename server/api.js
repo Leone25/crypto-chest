@@ -17,13 +17,19 @@ router.use(async (req, res, next) => {
 		}
 		if (req.method != 'GET' && req.body) { // decrypt body
 			try {
-				const iv = req.body.slice(0, 32);
-				const encrypted = req.body.slice(32);
+				const iv = req.body.slice(0, 16);
+				const encrypted = req.body.slice(16);
 				const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(req.session.encryption_key, 'hex'), iv);
 				const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
 				req.body = decrypted;
 			} catch (err) {
 				return res.status(400).json({ error: 'Invalid encrypted body' });
+			}
+			// we have to handle different content types our self as there is no way to pass it back to express
+			if (req.headers['content-type'] === 'application/json') {
+				req.body = JSON.parse(req.body);
+			} else if (req.headers['content-type'] === 'text/plain') {
+				req.body = req.body.toString();
 			}
 		}
 		const originalSend = res.send; // replace res.send to encrypt response
@@ -34,19 +40,23 @@ router.use(async (req, res, next) => {
 			}
 			const iv = crypto.randomBytes(16);
 			const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(req.session.encryption_key, 'hex'), iv);
-			let encrypted = cipher.update(body, 'utf8', 'hex');
-			encrypted += cipher.final('hex');
+			let encrypted = Buffer.concat([cipher.update(body, 'utf8'), cipher.final()]);
 			res.setHeader('Encrypted', 'true');
-			originalSend.call(this, iv.toString('hex') + ':' + encrypted);
+			originalSend.call(this, Buffer.concat([iv, encrypted]));
 		};
 	}
 	next();
 });
 
-router.use(json());
-
 router.all("/ping", (req, res) => {
     res.send("pong");
+});
+
+router.all("/echo", (req, res) => {
+	if (req.method != 'GET' && req.body) {
+    	return res.send(req.body);
+	}
+	res.send(req.query);
 });
 
 router.post("/users", async (req, res) => { // register a new user
